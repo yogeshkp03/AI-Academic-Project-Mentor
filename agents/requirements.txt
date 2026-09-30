@@ -1,0 +1,6 @@
+crewai[litellm,tools]>=1.15.21,<2
+duckduckgo-search>=8,<9
+fastapi>=0.141,<1
+uvicorn[standard]>=0.53,<1
+langchain-google-genai>=3,<5
+python-dotenv>=1.2,<2
