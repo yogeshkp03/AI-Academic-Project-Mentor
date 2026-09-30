@@ -1,0 +1,70 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+@import 'tailwindcss';
+
+@theme {
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+
+  --color-brand-50: #eff6ff;
+  --color-brand-100: #dbeafe;
+  --color-brand-200: #bfdbfe;
+  --color-brand-500: #3b82f6;
+  --color-brand-600: #2563eb;
+  --color-brand-700: #1d4ed8;
+  --color-brand-800: #1e40af;
+  --color-accent-500: #7c3aed;
+  --color-accent-600: #6d28d9;
+
+  --shadow-card: 0 12px 30px rgba(15, 23, 42, 0.06);
+  --shadow-card-hover: 0 18px 40px rgba(15, 23, 42, 0.1);
+  --shadow-brand: 0 12px 25px rgba(37, 99, 235, 0.3);
+
+  --animate-fade-up: fadeUp 0.5s ease;
+  --animate-fade-in: fadeIn 0.6s ease;
+  --animate-rise: rise 0.7s ease;
+  --animate-card-appear: cardAppear 0.6s ease;
+  --animate-progress: progressFill 1.2s ease;
+  --animate-rotate: rotateCircle 15s linear infinite;
+  --animate-hero: heroFade 1s ease;
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(15px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(30px) scale(0.96); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  @keyframes cardAppear {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes progressFill {
+    from { width: 0 !important; }
+  }
+  @keyframes rotateCircle {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+  @keyframes heroFade {
+    from { opacity: 0; transform: translateY(30px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    background-color: var(--color-slate-50);
+    color: var(--color-slate-900);
+    -webkit-font-smoothing: antialiased;
+  }
+  #root {
+    min-height: 100vh;
+  }
+}
