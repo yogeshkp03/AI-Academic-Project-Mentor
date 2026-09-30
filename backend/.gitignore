@@ -1,0 +1,13 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.db
+# SQLite WAL sidecars hold committed-but-not-checkpointed pages, which include
+# password hashes and live session tokens. '*.db' does not match these.
+*.db-wal
+*.db-shm
+*.db-journal
+.env
+.env.*
+!.env.example
