@@ -1,0 +1,120 @@
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0">
+  <diagram id="AI-Architecture" name="AI Project Architecture">
+    <mxGraphModel dx="1414" dy="915" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="900" background="light-dark(#FFFFFF,#FFFFFF)" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="student" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#191919;strokeColor=#0875a1;fontColor=#dddddd;fontSize=13;align=center;verticalAlign=middle;" value="Student" vertex="1">
+          <mxGeometry height="50" width="105" x="144" y="112" as="geometry" />
+        </mxCell>
+        <mxCell id="frontend" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#191919;strokeColor=#0875a1;fontColor=#dddddd;fontSize=13;align=center;verticalAlign=middle;" value="React AI Workspace" vertex="1">
+          <mxGeometry height="50" width="175" x="299" y="112" as="geometry" />
+        </mxCell>
+        <mxCell id="backend" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#191919;strokeColor=#0875a1;fontColor=#dddddd;fontSize=13;align=center;verticalAlign=middle;" value="FastAPI Backend" vertex="1">
+          <mxGeometry height="50" width="150" x="524" y="112" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_student_frontend" edge="1" parent="1" source="student" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#0875a1;strokeWidth=1;endArrow=block;endFill=1;" target="frontend">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_frontend_backend" edge="1" parent="1" source="frontend" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#0875a1;strokeWidth=1;endArrow=block;endFill=1;" target="backend">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="jwt" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#191919;strokeColor=#0875a1;fontColor=#dddddd;fontSize=13;align=center;verticalAlign=middle;" value="JWT Authentication" vertex="1">
+          <mxGeometry height="50" width="175" x="724" y="52" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_backend_jwt" edge="1" parent="1" source="backend" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#0875a1;strokeWidth=1;endArrow=block;endFill=1;" target="jwt">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="674" y="77" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="database" parent="1" style="shape=cylinder;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;fillColor=#191919;strokeColor=#0875a1;fontColor=#dddddd;fontSize=13;align=center;verticalAlign=middle;" value="MONGO DB" vertex="1">
+          <mxGeometry height="70" width="125" x="1149" y="162" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_backend_db" edge="1" parent="1" source="backend" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#0875a1;strokeWidth=1;endArrow=block;endFill=1;" target="database">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1004" y="137" />
+              <mxPoint x="1114" y="137" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="orchestrator" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#191919;strokeColor=#0875a1;fontColor=#dddddd;fontSize=13;align=center;verticalAlign=middle;" value="Agent Orchestrator" vertex="1">
+          <mxGeometry height="50" width="175" x="724" y="472" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_backend_orchestrator" edge="1" parent="1" source="backend" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#0875a1;strokeWidth=1;endArrow=block;endFill=1;" target="orchestrator">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="609" y="412" />
+              <mxPoint x="694" y="472" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="architect" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#191919;strokeColor=#0875a1;fontColor=#dddddd;fontSize=13;align=center;verticalAlign=middle;" value="Architect Agent" vertex="1">
+          <mxGeometry height="50" width="150" x="949" y="172" as="geometry" />
+        </mxCell>
+        <mxCell id="scope" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#191919;strokeColor=#0875a1;fontColor=#dddddd;fontSize=13;align=center;verticalAlign=middle;" value="Scope Agent" vertex="1">
+          <mxGeometry height="50" width="134" x="957" y="272" as="geometry" />
+        </mxCell>
+        <mxCell id="timeline" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#191919;strokeColor=#0875a1;fontColor=#dddddd;fontSize=13;align=center;verticalAlign=middle;" value="Timeline Agent" vertex="1">
+          <mxGeometry height="50" width="146" x="951" y="372" as="geometry" />
+        </mxCell>
+        <mxCell id="resource" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#191919;strokeColor=#0875a1;fontColor=#dddddd;fontSize=13;align=center;verticalAlign=middle;" value="Resource Agent" vertex="1">
+          <mxGeometry height="50" width="150" x="949" y="472" as="geometry" />
+        </mxCell>
+        <mxCell id="uiux" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#191919;strokeColor=#0875a1;fontColor=#dddddd;fontSize=13;align=center;verticalAlign=middle;" value="UI/UX Agent" vertex="1">
+          <mxGeometry height="50" width="134" x="957" y="572" as="geometry" />
+        </mxCell>
+        <mxCell id="q935LAWh255CANHbHXLQ-1" edge="1" parent="1" source="professor" style="edgeStyle=none;curved=1;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fontSize=12;startSize=8;endSize=8;" target="uiux" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="professor" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#191919;strokeColor=#0875a1;fontColor=#dddddd;fontSize=13;align=center;verticalAlign=middle;" value="Professor Agent" vertex="1">
+          <mxGeometry height="50" width="152" x="948" y="672" as="geometry" />
+        </mxCell>
+        <mxCell id="feasibility" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#191919;strokeColor=#0875a1;fontColor=#dddddd;fontSize=13;align=center;verticalAlign=middle;" value="Feasibility Agent" vertex="1">
+          <mxGeometry height="50" width="156" x="946" y="772" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_orch_architect" edge="1" parent="1" source="orchestrator" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#0875a1;strokeWidth=1;endArrow=block;endFill=1;" target="architect">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_orch_scope" edge="1" parent="1" source="orchestrator" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#0875a1;strokeWidth=1;endArrow=block;endFill=1;" target="scope">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_orch_timeline" edge="1" parent="1" source="orchestrator" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#0875a1;strokeWidth=1;endArrow=block;endFill=1;" target="timeline">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_orch_resource" edge="1" parent="1" source="orchestrator" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#0875a1;strokeWidth=1;endArrow=block;endFill=1;" target="resource">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_orch_uiux" edge="1" parent="1" source="orchestrator" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#0875a1;strokeWidth=1;endArrow=block;endFill=1;" target="uiux">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_orch_professor" edge="1" parent="1" source="orchestrator" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#0875a1;strokeWidth=1;endArrow=block;endFill=1;" target="professor">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_orch_feasibility" edge="1" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#0875a1;strokeWidth=1;endArrow=block;endFill=1;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1024" y="497" />
+              <mxPoint x="1024" y="772" />
+            </Array>
+            <mxPoint x="861" y="497" as="sourcePoint" />
+            <mxPoint x="986" y="772" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge_architect_db" edge="1" parent="1" source="architect" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#0875a1;strokeWidth=1;endArrow=block;endFill=1;" target="database">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_feasibility_db" edge="1" parent="1" source="feasibility" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#0875a1;strokeWidth=1;endArrow=block;endFill=1;" target="database">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1114" y="797" />
+              <mxPoint x="1149" y="202" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

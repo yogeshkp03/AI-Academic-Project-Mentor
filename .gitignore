@@ -1,20 +1,37 @@
 # Python
 __pycache__/
-*.pyc
-venv/
+*.py[cod]
 .venv/
+venv/
+*.egg-info/
+.pytest_cache/
 
-# Node
+# Environment & secrets
+.env
+.env.*
+!.env.example
+
+# Databases
+*.db
+# SQLite sidecar files. Under WAL these hold recently committed pages that are
+# NOT yet in the main .db, including password hashes and live session tokens.
+*.db-wal
+*.db-shm
+*.db-journal
+
+# Node / frontend
 node_modules/
 dist/
-build/
+dist-ssr/
+*.local
+npm-debug.log*
 
-# Environment
-.env
-
-# IDE
-.vscode/
-
-# OS
+# Editors / OS
+.vscode/*
+!.vscode/settings.json
+.idea/
 .DS_Store
 Thumbs.db
+
+# Logs
+*.log
