@@ -2,7 +2,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.database.database import utcnow
-from app.models.agent_run import AgentRun
+from app.models.agent_run import ANALYSIS_STEP_KEYS, AgentRun, AgentRunStep
 
 MAX_VERSION_RETRIES = 5
 
@@ -41,6 +41,10 @@ def create_agent_run(
             version=next_version,
             is_active=1,
             status="queued",
+            steps=[
+                AgentRunStep(step_key=key, position=position, status="pending")
+                for position, key in enumerate(ANALYSIS_STEP_KEYS, start=1)
+            ] if agent_type == "complete_analysis" else [],
         )
         db.add(run)
         try:

@@ -4,6 +4,7 @@ from sqlalchemy import DateTime, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.database import Base, utcnow
+from app.models.student_skill import StudentSkill
 
 
 class Student(Base):
@@ -39,3 +40,14 @@ class Student(Base):
     )
 
     projects = relationship("Project", back_populates="student", cascade="all, delete-orphan")
+    skills = relationship(
+        "StudentSkill",
+        cascade="all, delete-orphan",
+        order_by=lambda: StudentSkill.normalized_name,
+    )
+    skill_assessment_attempts = relationship(
+        "SkillAssessmentAttempt",
+        back_populates="student",
+        cascade="all, delete-orphan",
+        order_by="SkillAssessmentAttempt.created_at.desc()",
+    )

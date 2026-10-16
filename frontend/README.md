@@ -1,16 +1,30 @@
-# React + Vite
+# Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+The React/Vite client uses the backend API for authentication, projects,
+analysis runs, milestones, profile skills, conversations, and chat history.
+Copy `.env.example` to `.env` and set `VITE_API_BASE_URL` to the backend URL.
+Vite embeds that value during the build, so set it before running `npm run build`.
 
-Currently, two official plugins are available:
+Install and start the development server:
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+```powershell
+npm ci
+npm run dev
+```
 
-## React Compiler
+Run the production checks and preview the generated client:
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+```powershell
+npm run lint
+npm run build
+npm run preview
+```
 
-## Expanding the ESLint configuration
+The backend `CORS_ORIGINS` setting must include the exact browser origin, such
+as `http://localhost:5173` in local development. The browser talks only to the
+backend; it does not call the agents service directly.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+From an AI Mentor conversation, choose **Update plan from chat** to create a
+new version using that saved discussion. Previous analysis versions remain
+available. Saved reports can be downloaded as Markdown (`.md`) or PDF from the
+analysis history.

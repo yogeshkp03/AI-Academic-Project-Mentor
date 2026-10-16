@@ -4,6 +4,20 @@ from sqlalchemy import DateTime, Float, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.database import Base, utcnow
+from app.models.project import Project
+from app.models.student import Student
+
+
+ANALYSIS_STEP_KEYS = (
+    "feasibility",
+    "architect",
+    "scope",
+    "timeline",
+    "ui_ux",
+    "planning",
+    "professor",
+    "resource",
+)
 
 
 class AgentRun(Base):
@@ -27,6 +41,8 @@ class AgentRun(Base):
     is_active: Mapped[int] = mapped_column(Integer, nullable=False, default=1, index=True)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="queued", index=True)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    attempt_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    enqueued_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     token_usage: Mapped[str | None] = mapped_column(Text, nullable=True)
     cost: Mapped[float | None] = mapped_column(Float, nullable=True)
     duration_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
@@ -34,5 +50,31 @@ class AgentRun(Base):
     started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
-    student = relationship("Student")
-    project = relationship("Project")
+    student = relationship(Student)
+    project = relationship(Project)
+    steps = relationship(
+        "AgentRunStep",
+        back_populates="agent_run",
+        cascade="all, delete-orphan",
+        order_by="AgentRunStep.position",
+    )
+
+
+class AgentRunStep(Base):
+    __tablename__ = "agent_run_steps"
+    __table_args__ = (
+        Index("ux_agent_run_steps_run_key", "agent_run_id", "step_key", unique=True),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    agent_run_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("agent_runs.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    step_key: Mapped[str] = mapped_column(String(50), nullable=False)
+    position: Mapped[int] = mapped_column(Integer, nullable=False)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")
+    output: Mapped[str | None] = mapped_column(Text, nullable=True)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+    agent_run = relationship("AgentRun", back_populates="steps")

@@ -29,5 +29,19 @@ export function useProjects(studentId) {
     return project;
   };
 
-  return { projects, loading, error, refetch, createProject, setProjects: setData, setError };
+  const deleteProject = async (projectId) => {
+    await projectsApi.delete(projectId);
+    setData((previous) => (previous || []).filter((project) => project.id !== projectId));
+  };
+
+  return {
+    projects,
+    loading,
+    error,
+    refetch,
+    createProject,
+    deleteProject,
+    setProjects: setData,
+    setError,
+  };
 }

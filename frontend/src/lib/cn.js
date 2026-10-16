@@ -1,1 +1,1 @@
-export const cn = (...classes) => classes.filter(Boolean).join(' ');
+export { cn } from '../components/ui/cn';

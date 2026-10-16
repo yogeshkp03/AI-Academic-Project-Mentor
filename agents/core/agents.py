@@ -1,7 +1,8 @@
 import logging
 import os
 import threading
-from typing import Any
+import time
+from typing import Any, cast
 
 from crewai import Agent, LLM
 from crewai.utilities.types import LLMMessage
@@ -92,13 +93,27 @@ LLM_NUM_RETRIES = max(0, int(os.getenv("LLM_NUM_RETRIES", "1")))
 # Groq fallback has never actually served a request.
 _CACHE_BREAKPOINT_KEY = "cache_breakpoint"
 
+# gemini/gemini-3.5-flash-lite on crewai's automatic-function-calling path answers
+# with empty content - HTTP 200, no candidates - instead of raising, which crewai
+# turns into ValueError("Invalid response from LLM call - None or empty.") at
+# force-final-answer time. That is what failed the Resource Agent on every run.
+#
+# litellm's num_retries only fires on exceptions, so it can never see an empty
+# reply; the retry has to happen above the call that produces it. A blank answer
+# is as transient as any other provider hiccup, so it is retried rather than
+# handed straight back to crewai to die on.
+EMPTY_REPLY_ATTEMPTS = max(2, int(os.getenv("LLM_EMPTY_REPLY_ATTEMPTS", "2")))
+EMPTY_REPLY_BACKOFF_SECONDS = max(
+    0.0, float(os.getenv("LLM_EMPTY_REPLY_BACKOFF_SECONDS", "1"))
+)
+
 
 class ProviderSafeLLM(LLM):
     """LLM that strips crewai's internal cache-breakpoint marker.
 
     Nothing this project talks to (Groq, Gemini through litellm) consumes the
-    marker — it is read only by crewai's own Anthropic handler, which re-derives
-    it from its own input — so removing it here costs no caching and is what
+    marker - it is read only by crewai's own Anthropic handler, which re-derives
+    it from its own input - so removing it here costs no caching and is what
     makes the Groq provider reachable at all.
     """
 
@@ -116,7 +131,84 @@ class ProviderSafeLLM(LLM):
         ]
 
 
-def _make_llm(model: str, temperature: float, api_key: str | None) -> LLM:
+class _EmptyReplyRetryMixin:
+    """Repeat an empty provider reply instead of failing the agent on it.
+
+    crewai raises the moment llm.call() returns None or "", so one blank answer
+    is fatal to whichever agent made it - and gemini/gemini-3.5-flash-lite on the
+    automatic-function-calling path serves blank answers as HTTP 200s with no
+    candidates rather than as exceptions. That is what failed the Resource Agent
+    on every run.
+
+    litellm's num_retries only fires on exceptions, so it can never see a blank
+    reply; the retry has to live above the call that produces it. Every attempt
+    repeats the arguments of the call that came back empty, and the last empty
+    answer is returned unchanged so crewai still raises its own error when the
+    budget is genuinely spent.
+    """
+
+    model: str
+
+    def call(
+        self,
+        messages: str | list[LLMMessage],
+        tools: Any | None = None,
+        callbacks: list[Any] | None = None,
+        available_functions: dict[str, Any] | None = None,
+        from_task: Any | None = None,
+        from_agent: Any | None = None,
+        response_model: Any | None = None,
+    ) -> str | Any:
+        attempts = max(1, EMPTY_REPLY_ATTEMPTS)
+        answer: Any = None
+        for attempt in range(1, attempts + 1):
+            answer = cast(LLM, super()).call(
+                messages,
+                tools=tools,
+                callbacks=callbacks,
+                available_functions=available_functions,
+                from_task=from_task,
+                from_agent=from_agent,
+                response_model=response_model,
+            )
+            if answer is not None and answer != "":
+                return answer
+            logger.warning(
+                "%s returned an empty reply (attempt %d of %d).",
+                self.model,
+                attempt,
+                attempts,
+            )
+            if attempt < attempts:
+                time.sleep(EMPTY_REPLY_BACKOFF_SECONDS * attempt)
+        return answer
+
+
+def _with_empty_reply_retry(llm: LLM) -> LLM:
+    """Put the empty-reply retry in front of whichever class crewai routed to.
+
+    crewai's LLM.__new__ is a factory, not a constructor: a gemini/ model comes
+    back as GeminiCompletion and a groq/ model stays a plain LLM, so an override
+    written on any single one of those classes silently never runs for the
+    others. Swapping in a subclass of the instance's own class instead covers
+    every provider, which matters because the Resource Agent - the stage this
+    retry exists for - runs on Gemini.
+    """
+    cls = type(llm)
+    if issubclass(cls, _EmptyReplyRetryMixin):
+        return llm
+    llm.__class__ = type(f"Retry{cls.__name__}", (_EmptyReplyRetryMixin, cls), {})
+    return llm
+
+
+def _make_llm(
+    model: str,
+    temperature: float,
+    api_key: str | None,
+    *,
+    timeout: int | None = None,
+    num_retries: int | None = None,
+) -> LLM:
     """Build a provider-routed LLM.
 
     crewai rewrites an LLM into a provider-specific class for providers it has
@@ -125,12 +217,20 @@ def _make_llm(model: str, temperature: float, api_key: str | None) -> LLM:
     groq/ model — stay on crewai.llm.LLM and are the ones ProviderSafeLLM is
     here to protect.
     """
-    return ProviderSafeLLM(
-        model=model,
-        temperature=temperature,
-        api_key=api_key,
-        timeout=LLM_TIMEOUT,
-        additional_params={"num_retries": LLM_NUM_RETRIES},
+    # crewai's LLM.__new__ is a factory: a gemini/ model is returned as
+    # GeminiCompletion, which strips the marker itself, while every groq/ model
+    # stays on this ProviderSafeLLM. The empty-reply retry has to be applied
+    # after that routing, or it would only ever cover half the providers.
+    return _with_empty_reply_retry(
+        ProviderSafeLLM(
+            model=model,
+            temperature=temperature,
+            api_key=api_key,
+            timeout=timeout if timeout is not None else LLM_TIMEOUT,
+            additional_params={
+                "num_retries": num_retries if num_retries is not None else LLM_NUM_RETRIES
+            },
+        )
     )
 
 
@@ -292,7 +392,13 @@ def _make_agent(
     )
 
 
-def _clone_agent(agent: Agent, llm: LLM) -> Agent:
+def _clone_agent(
+    agent: Agent,
+    llm: LLM,
+    *,
+    max_iter: int = 3,
+    max_retry_limit: int = 2,
+) -> Agent:
     """Rebuild an agent with the same instructions but a different LLM."""
     return Agent(
         role=agent.role,
@@ -302,9 +408,37 @@ def _clone_agent(agent: Agent, llm: LLM) -> Agent:
         tools=getattr(agent, "tools", None) or [],
         allow_delegation=False,
         respect_context_window=True,
-        max_iter=3,
-        max_retry_limit=2,
+        max_iter=max_iter,
+        max_retry_limit=max_retry_limit,
     )
+
+
+def create_resource_agent(
+    *,
+    provider: str | None = None,
+    timeout: int = 30,
+) -> Agent:
+    """Create the Resource Agent with a bounded provider timeout.
+
+    Iterations and retries match the other agents. This stage used to run with
+    max_iter=1 and no retries at any layer, so the search call consumed its only
+    iteration and the forced final answer - a single empty Gemini reply - failed
+    the whole stage instead of being retried. Only the per-call timeout is still
+    tightened, which is what keeps a hung provider from holding the worker
+    thread open.
+    """
+    if timeout < 1:
+        raise ValueError("Resource Agent timeout must be positive.")
+    model = plan_models(provider)["resource"]
+    provider_key = GEMINI_API_KEY if _provider_of(model) == "gemini" else GROQ_API_KEY
+    llm = _make_llm(
+        model,
+        AGENT_TEMPERATURES.get("resource", DEFAULT_TEMPERATURE),
+        provider_key,
+        timeout=timeout,
+        num_retries=LLM_NUM_RETRIES,
+    )
+    return _clone_agent(resource_agent, llm)
 
 
 def create_feasibility_agent(llm: LLM | None = None) -> Agent:
@@ -464,13 +598,17 @@ def create_analysis_agents(
     plan (see :func:`plan_models`); an explicit ``llm`` rebinds the whole team
     to that one object, which tests use.
     """
-    plan: dict[str, str] | None = None
-    if llm is None:
-        plan = plan_models(provider)
+    if llm is not None:
+        return {
+            key: _clone_agent(singleton, llm)
+            for key, singleton in _SINGLETON_AGENTS.items()
+        }
+
+    plan = plan_models(provider)
     return {
         key: _clone_agent(
             singleton,
-            llm if llm is not None else agent_llm(key, model=plan[key]),  # pyright: ignore[reportOptionalSubscript]
+            agent_llm(key, model=plan[key]),
         )
         for key, singleton in _SINGLETON_AGENTS.items()
     }

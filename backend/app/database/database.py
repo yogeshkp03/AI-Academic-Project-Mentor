@@ -7,9 +7,10 @@ from sqlalchemy.orm import declarative_base, sessionmaker
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./academic_mentor.db")
 
+connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
 engine = create_engine(
     DATABASE_URL,
-    connect_args={"check_same_thread": False},
+    connect_args=connect_args,
     future=True,
 )
 
@@ -48,6 +49,7 @@ Base = declarative_base()
 # Created on both fresh databases (via models) and existing ones (via
 # upgrade_existing_schema below).
 INDEX_DDL = [
+    "CREATE UNIQUE INDEX IF NOT EXISTS uq_mentor_appeals_form_submission ON mentor_appeals (google_form_submission_id)",
     "CREATE INDEX IF NOT EXISTS ix_agent_runs_project_agent ON agent_runs (project_id, agent_type)",
     "CREATE UNIQUE INDEX IF NOT EXISTS ux_agent_runs_version ON agent_runs (project_id, agent_type, version)",
     "CREATE INDEX IF NOT EXISTS ix_conversations_student_project ON conversations (student_id, project_id)",
@@ -64,6 +66,10 @@ def upgrade_existing_schema():
             "created_at": "DATETIME",
             "updated_at": "DATETIME",
         },
+        "faculty": {
+            "is_mentor_available": "BOOLEAN NOT NULL DEFAULT 0",
+            "mentor_expertise": "VARCHAR(500) NOT NULL DEFAULT ''",
+        },
         "projects": {
             "ai_report": "TEXT",
             "technology_stack": "TEXT",
@@ -77,9 +83,18 @@ def upgrade_existing_schema():
         "agent_runs": {
             "version": "INTEGER NOT NULL DEFAULT 1",
             "is_active": "INTEGER NOT NULL DEFAULT 1",
+            "attempt_id": "VARCHAR(64)",
+            "enqueued_at": "DATETIME",
             "token_usage": "TEXT",
             "cost": "FLOAT",
             "duration_ms": "INTEGER",
+        },
+        "mentor_appeals": {
+            "google_form_submission_id": "VARCHAR(200)",
+            "profile_consent_at": "DATETIME",
+        },
+        "agent_run_steps": {
+            "output": "TEXT",
         },
     }
 

@@ -102,6 +102,52 @@ def test_student_id_is_forwarded_so_agents_can_scope_limits(monkeypatch: pytest.
     assert seen["headers"].get("X-Student-Id") == "42"
 
 
+def test_analysis_sends_run_identity_without_replaying_http_request(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    seen: dict[str, Any] = {}
+
+    def _capture(url: str, json: Any = None, headers: Any = None, timeout: Any = None) -> requests.Response:
+        seen.update(json=json, headers=headers)
+        return _response({"report": "ok"})
+
+    monkeypatch.setattr(ai_service.requests, "post", _capture)
+    ai_service.analyze_project(
+        "A project idea worth analysing",
+        student_id=42,
+        run_id=77,
+        attempt_id="attempt-identifier-123456",
+    )
+    assert seen["json"]["run_id"] == 77
+    assert seen["json"]["attempt_id"] == "attempt-identifier-123456"
+    assert seen["headers"]["X-Analysis-Run-Id"] == "77"
+    assert seen["headers"]["X-Agents-Token"] == "test-agents-service-token"
+
+
+def test_analysis_and_chat_send_student_skill_context(monkeypatch: pytest.MonkeyPatch):
+    seen: list[dict[str, Any]] = []
+
+    def _capture(url: str, json: Any = None, headers: Any = None, timeout: Any = None) -> requests.Response:
+        seen.append(json)
+        return _response({"report": "ok", "answer": "ok", "milestones": []})
+
+    monkeypatch.setattr(ai_service.requests, "post", _capture)
+    ai_service.analyze_project(
+        "A project idea worth analysing",
+        student_context="- Python (Intermediate)",
+    )
+    ai_service.generate_chat_response(
+        project_idea="idea",
+        project_title="title",
+        chat_history="",
+        user_question="How do I start?",
+        student_context="- Python (Intermediate)",
+    )
+
+    assert seen[0]["student_context"] == "- Python (Intermediate)"
+    assert seen[1]["student_context"] == "- Python (Intermediate)"
+
+
 def test_transient_server_error_is_retried_then_succeeds(monkeypatch: pytest.MonkeyPatch):
     attempts: list[int] = []
     bodies = [503, 200]
@@ -109,14 +155,34 @@ def test_transient_server_error_is_retried_then_succeeds(monkeypatch: pytest.Mon
     def _capture(url: str, json: Any = None, headers: Any = None, timeout: Any = None) -> requests.Response:
         status_code = bodies[len(attempts)]
         attempts.append(status_code)
-        return _response({"report": "RECOVERED"}, status_code=status_code)
+        return _response({"answer": "RECOVERED"}, status_code=status_code)
 
     monkeypatch.setattr(ai_service.requests, "post", _capture)
     monkeypatch.setattr(ai_service.time, "sleep", lambda seconds: None)  # pyright: ignore[reportUnknownLambdaType, reportUnknownArgumentType]
 
-    result: dict[str, Any] = ai_service.analyze_project("A project idea worth analysing")
-    assert result["report"] == "RECOVERED"
+    result = ai_service.generate_chat_response(
+        project_idea="idea",
+        project_title="title",
+        chat_history="",
+        user_question="How do I start?",
+    )
+    assert result == "RECOVERED"
     assert attempts == [503, 200]
+
+
+def test_analysis_request_does_not_retry_after_server_error(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    attempts: list[int] = []
+
+    def _capture(url: str, json: Any = None, headers: Any = None, timeout: Any = None) -> requests.Response:
+        attempts.append(1)
+        return _response({"detail": "analysis outcome unknown"}, status_code=503)
+
+    monkeypatch.setattr(ai_service.requests, "post", _capture)
+    with pytest.raises(RuntimeError, match="unavailable"):
+        ai_service.analyze_project("A project idea worth analysing", run_id=77)
+    assert len(attempts) == 1
 
 
 def test_client_errors_are_not_retried(monkeypatch: pytest.MonkeyPatch):
@@ -197,7 +263,7 @@ def test_run_status_and_blueprint_are_written_together(monkeypatch: pytest.Monke
     monkeypatch.setattr(
         workspace_module,
         "analyze_project",
-        lambda prompt, student_id=None: {  # pyright: ignore[reportUnknownLambdaType, reportUnknownArgumentType]
+        lambda prompt, student_id=None, **kwargs: {  # pyright: ignore[reportUnknownLambdaType, reportUnknownArgumentType]
             "report": "THE REPORT",
             "token_usage": {"total_tokens": 7},
             "cost": 0.5,
@@ -240,7 +306,7 @@ def test_unserialisable_token_usage_does_not_fail_a_successful_run(monkeypatch: 
     monkeypatch.setattr(
         workspace_module,
         "analyze_project",
-        lambda prompt, student_id=None: {  # pyright: ignore[reportUnknownLambdaType, reportUnknownArgumentType]
+        lambda prompt, student_id=None, **kwargs: {  # pyright: ignore[reportUnknownLambdaType, reportUnknownArgumentType]
             "report": "STILL A GOOD REPORT",
             "token_usage": object(),  # not JSON serialisable
             "cost": 0.0,

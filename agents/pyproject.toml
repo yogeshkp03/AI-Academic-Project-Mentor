@@ -5,12 +5,12 @@ description = "CrewAI feasibility-analysis service exposed as a FastAPI API."
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-    "crewai[file-processing,litellm,tools]>=1.15.21,<2",
-    "duckduckgo-search>=8,<9",
+    "crewai[google-genai,litellm]>=1.15.21,<2",
+    "ddgs>=9,<12",
     "fastapi>=0.141,<1",
     "uvicorn[standard]>=0.53,<1",
-    "langchain-google-genai>=3,<5",
     "python-dotenv>=1.2,<2",
+    "requests>=2.32,<3",
 ]
 
 [project.optional-dependencies]

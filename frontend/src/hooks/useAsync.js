@@ -36,7 +36,11 @@ export function useAsync(asyncFn, { auto = true, deps = [], onResult } = {}) {
     async (...args) => {
       const runId = ++runIdRef.current;
       setLoading(true);
-      setResult({ key: currentKey, data: null, error: '' });
+      setResult((previous) => ({
+        key: currentKey,
+        data: previous.key === currentKey ? previous.data : null,
+        error: '',
+      }));
       try {
         const value = await asyncFn(...args);
         if (runId === runIdRef.current) {
@@ -46,18 +50,18 @@ export function useAsync(asyncFn, { auto = true, deps = [], onResult } = {}) {
         return value;
       } catch (err) {
         if (runId === runIdRef.current) {
-          setResult({
+          setResult((previous) => ({
             key: currentKey,
-            data: null,
+            data: previous.key === currentKey ? previous.data : null,
             error: err.message || 'Something went wrong.',
-          });
+          }));
         }
         throw err;
       } finally {
         if (runId === runIdRef.current) setLoading(false);
       }
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps, react-hooks/use-memo
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [...deps, currentKey, onResult],
   );
 

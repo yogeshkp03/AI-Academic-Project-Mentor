@@ -6,6 +6,6 @@ pydantic[email]==2.12.5
 email-validator==2.3.0
 PyJWT==2.14.0
 requests==2.34.2
-pytest==9.1.1
-pytest-timeout==2.3.1
-httpx==0.28.1
+celery[redis]==5.5.3
+psycopg[binary]>=3.2,<4
+python-dotenv>=1.2,<2

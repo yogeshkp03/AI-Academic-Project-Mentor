@@ -1,8 +1,8 @@
 # Project Feasibility AI API
 
-FastAPI service that sends a project idea through an 8-step CrewAI workflow
-(feasibility -> architecture -> scope -> timeline -> resources -> UI/UX ->
-execution plan -> professor QA) and returns a Markdown feasibility report.
+FastAPI service that sends a project idea through a CrewAI workflow
+(feasibility -> architecture -> scope -> timeline -> UI/UX -> execution plan
+-> professor QA -> learning resources) and returns a Markdown feasibility report.
 Also serves follow-up chat via an AI mentor or any individual specialist agent.
 
 ## Setup
@@ -11,8 +11,6 @@ Also serves follow-up chat via an AI mentor or any individual specialist agent.
 
    ```powershell
    uv sync
-   # or, without uv:
-   pip install -r requirements.txt
    ```
 
 2. Copy `.env.example` to `.env` and set at least one provider key:
@@ -21,6 +19,12 @@ Also serves follow-up chat via an AI mentor or any individual specialist agent.
 
    Either key alone works: an agent whose model belongs to a provider with no
    key is transparently moved to the configured one.
+
+   The seven core analysis tasks finish before the separate Resource Agent starts.
+   The resource call has a shorter timeout (`RESOURCE_LLM_TIMEOUT_SECONDS`, default
+   30 seconds), no LLM retries, one agent iteration, and bounded search requests.
+   If it still fails, the combined report completes with a clear resource
+   verification note instead of rerunning or failing the core analysis.
 
 ### Models
 
@@ -38,8 +42,13 @@ with `MODEL_<AGENT_KEY>`, or per provider with the three knobs):
 retries as a Groq-only plan, then a Gemini-only plan (both keep the tier shape
 so no single model exceeds its rate limits).
 
-   Optionally set `AGENTS_API_TOKEN`; when present, every `/api/*` request
-   must send it in the `X-Agents-Token` header.
+   Configure `AGENTS_API_TOKEN` and the matching backend
+   `AI_SERVICE_API_KEY`; the backend sends the token in `X-Agents-Token`.
+   Set `APP_ENV=production` on deployment so startup fails if the token is
+   missing. Keep this API on a private network.
+   Configure `BACKEND_PROGRESS_URL` and `BACKEND_PROGRESS_TOKEN` to report
+   each completed agent step to the backend. The backend must have the matching
+   `AGENTS_PROGRESS_TOKEN`.
 
 ## Run
 
@@ -61,12 +70,23 @@ by default; configure with `AGENTS_BASE_URL` in `backend/.env`).
 `POST /api/analyze` returns the full blueprint report. Identical ideas are
 served from an in-memory TTL cache (1 hour) to avoid re-billing the LLMs;
 the response includes an `analysis_id`.
+Backend-triggered requests also include a persistent run ID and attempt token;
+the agents service uses them only to send authenticated step progress to the
+backend and does not own run persistence.
 
 ### Chat about a blueprint
 
 `POST /api/chat` with fields: `project_idea`, `project_title`,
 `project_blueprint` (the report from `/api/analyze`), `analysis_id`, the
 `chat_history` accumulated so far, and `question`.
+
+### Propose a project plan adjustment
+
+The authenticated `POST /api/plans/adjust` endpoint accepts project context, a
+saved weekly check-in, and the current milestone snapshot. It returns a
+structured rationale and proposed remaining milestones. The backend persists
+the proposal and applies it only after the student approves it; completed
+milestones are preserved.
 
 ### Health check
 

@@ -6,9 +6,14 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.project import router as project_router
 from app.api.student import router as student_router
+from app.api.faculty import router as faculty_router
+from app.api.mentorship import router as mentorship_router
+from app.api.skill_assessment import router as skill_assessment_router
+from app.api.project_risks import router as project_risks_router
+from app.api.project_checkins import router as project_checkins_router
+from app.api.project_plan_proposals import router as project_plan_proposals_router
 from app.api.workspace import router as workspace_router
-from app.database.database import Base, SessionLocal, engine, upgrade_existing_schema
-from app.services.agent_run_service import fail_orphaned_runs
+from app.database.database import Base, engine, upgrade_existing_schema
 
 logging.basicConfig(
     level=logging.INFO,
@@ -17,9 +22,6 @@ logging.basicConfig(
 
 upgrade_existing_schema()
 Base.metadata.create_all(bind=engine)
-
-with SessionLocal() as startup_db:
-    fail_orphaned_runs(startup_db)
 
 app = FastAPI(
     title="AI Academic Project Mentor API",
@@ -40,12 +42,18 @@ app.add_middleware(
     # credentialed cross-origin requests are never needed. Leaving this off
     # avoids the wildcard-plus-credentials foot-gun if the list ever widens.
     allow_credentials=False,
-    allow_methods=["GET", "POST", "PATCH", "DELETE"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
     allow_headers=["Authorization", "Content-Type"],
 )
 
 app.include_router(student_router)
 app.include_router(project_router)
+app.include_router(faculty_router)
+app.include_router(mentorship_router)
+app.include_router(skill_assessment_router)
+app.include_router(project_risks_router)
+app.include_router(project_checkins_router)
+app.include_router(project_plan_proposals_router)
 app.include_router(workspace_router)
 
 

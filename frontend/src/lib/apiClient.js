@@ -23,29 +23,30 @@ const formatDetail = (detail) => {
   return 'Request failed.';
 };
 
-// A 401 means the session is dead. FastAPI's HTTPBearer answers 403, not 401,
-// when the Authorization header is missing or malformed, so both must be
-// treated as an auth failure or the user is left on an app shell that fails
-// every request.
-const AUTH_FAILURES = new Set([401, 403]);
+// Authorization denials do not invalidate an otherwise valid session.
+const AUTH_FAILURES = new Set([401]);
 
 let redirecting = false;
 
-const redirectToLogin = () => {
+const redirectToLogin = (loginPath = '/login') => {
   if (redirecting) return;
-  redirecting = true;
   const path = window.location.pathname;
-  if (path.startsWith('/login') || path.startsWith('/register')) return;
-  window.location.href = '/login';
+  if (path === loginPath || path.startsWith('/register') || path.startsWith('/faculty/register')) return;
+  redirecting = true;
+  window.location.href = loginPath;
 };
 
-const handleResponse = async (response, { hadAuth } = {}) => {
+const handleResponse = async (response, {
+  hadAuth,
+  authFailurePath,
+  onAuthFailure = session.clearAuth,
+} = {}) => {
   // A 401 only means the session is dead when the request actually carried a
   // token. A bare login attempt with bad credentials must not wipe a good
   // session or bounce the user around.
   if (AUTH_FAILURES.has(response.status) && hadAuth) {
-    session.clearAuth();
-    redirectToLogin();
+    onAuthFailure();
+    redirectToLogin(authFailurePath);
     throw new ApiError(response.status, 'Session expired. Please log in again.');
   }
 
@@ -57,10 +58,20 @@ const handleResponse = async (response, { hadAuth } = {}) => {
 };
 
 export const apiClient = {
-  async request(path, { method = 'GET', body, query, auth = true } = {}) {
+  async request(path, {
+    method = 'GET',
+    body,
+    query,
+    auth = true,
+    authToken,
+    authFailurePath,
+    onAuthFailure,
+  } = {}) {
     const headers = {};
     if (body !== undefined) headers['Content-Type'] = 'application/json';
-    const token = auth ? session.token : null;
+    const token = auth
+      ? (authToken !== undefined ? authToken : session.token)
+      : null;
     if (token) headers.Authorization = `Bearer ${token}`;
 
     const response = await fetch(`${API_URL}${path}${toQueryString(query)}`, {
@@ -72,11 +83,16 @@ export const apiClient = {
     if (response.status === 204) return null;
     // Whether this request carried a token is decided from the value actually
     // sent, not from a fresh read that another request may already have cleared.
-    return handleResponse(response, { hadAuth: Boolean(token) });
+    return handleResponse(response, {
+      hadAuth: Boolean(token),
+      authFailurePath,
+      onAuthFailure,
+    });
   },
 
   get: (path, options) => apiClient.request(path, { method: 'GET', ...options }),
   post: (path, body, options) => apiClient.request(path, { method: 'POST', body, ...options }),
   patch: (path, body, options) => apiClient.request(path, { method: 'PATCH', body, ...options }),
+  put: (path, body, options) => apiClient.request(path, { method: 'PUT', body, ...options }),
   delete: (path, options) => apiClient.request(path, { method: 'DELETE', ...options }),
 };

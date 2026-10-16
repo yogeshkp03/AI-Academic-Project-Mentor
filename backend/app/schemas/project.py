@@ -1,6 +1,7 @@
+from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ProjectCreate(BaseModel):
@@ -11,7 +12,17 @@ class ProjectCreate(BaseModel):
     duration: Optional[str] = None
 
 
+class FacultyEvaluationResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    score: int
+    feedback: str
+    evaluated_at: datetime
+
+
 class ProjectResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     student_id: int
     title: str
@@ -20,6 +31,4 @@ class ProjectResponse(BaseModel):
     duration: Optional[str] = None
     status: str
     ai_report: Optional[str] = None
-
-    class Config:
-        from_attributes = True
+    faculty_evaluation: FacultyEvaluationResponse | None = None

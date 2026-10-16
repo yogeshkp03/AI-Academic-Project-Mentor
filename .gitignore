@@ -35,3 +35,6 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Celery runtime state
+celerybeat-schedule*

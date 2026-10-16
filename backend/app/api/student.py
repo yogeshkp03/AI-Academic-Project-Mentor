@@ -13,10 +13,17 @@ from app.api.rate_limit import auth_rate_limiter, client_key
 from app.core.config import get_jwt_secret
 from app.database.database import get_db, utcnow
 from app.models.student import Student
-from app.schemas.student import StudentCreate, StudentLogin, StudentResponse, StudentUpdate, TokenResponse
+from app.models.student_skill import StudentSkill
+from app.schemas.student import (
+    StudentCreate,
+    StudentLogin,
+    StudentResponse,
+    StudentUpdate,
+    TokenResponse,
+)
 
 router = APIRouter(prefix="/students", tags=["Students"])
-security = HTTPBearer()
+security = HTTPBearer(auto_error=False)
 SECRET_KEY = get_jwt_secret()
 ALGORITHM = "HS256"
 
@@ -97,12 +104,13 @@ def _token_matches(student: Student, presented: str) -> bool:
     return hmac.compare_digest(stored, presented)
 
 
-def create_access_token(student_id: int, email: str) -> str:
+def create_access_token(student_id: int, email: str, role: str = "student") -> str:
     now = utcnow()
     expires_at = now + timedelta(hours=12)
     payload = {
         "sub": str(student_id),
         "email": email,
+        "role": role,
         "jti": secrets.token_hex(8),
         "iat": now,
         "exp": expires_at,
@@ -111,12 +119,20 @@ def create_access_token(student_id: int, email: str) -> str:
 
 
 def get_current_student(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
+    credentials: HTTPAuthorizationCredentials | None = Depends(security),
     db: Session = Depends(get_db),
 ) -> Student:
+    if credentials is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication is required.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     try:
         token = credentials.credentials
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])  # pyright: ignore[reportUnknownMemberType]
+        if payload.get("role", "student") != "student":
+            raise ValueError("Token is not a student session.")
         student_id = int(payload["sub"])
     except Exception:
         raise HTTPException(
@@ -271,6 +287,19 @@ def update_current_student_profile(
         current_student.department = payload.department.strip()
     if payload.semester is not None:
         current_student.semester = payload.semester
+    if payload.skills is not None:
+        db.query(StudentSkill).filter(
+            StudentSkill.student_id == current_student.id
+        ).delete(synchronize_session=False)
+        db.add_all(
+            StudentSkill(
+                student_id=current_student.id,
+                name=skill.name,
+                normalized_name=skill.name.casefold(),
+                level=skill.level,
+            )
+            for skill in payload.skills
+        )
     db.commit()
     db.refresh(current_student)
     return current_student

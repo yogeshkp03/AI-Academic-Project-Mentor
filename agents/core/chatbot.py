@@ -71,6 +71,11 @@ def create_chatbot_task(
             "</history>\n\n"
             f"The student just asked this question: '{_truncate(user_question, MAX_QUESTION_CHARS)}'\n\n"
             "Answer the student based strictly on the blueprint context and the conversation history. "
+            "The blueprint may contain named specialist report sections. Use the sections most relevant "
+            "to the question, and briefly identify the section or specialist that informed your advice "
+            "when it helps the student. You are always the AI Mentor: do not claim to hand off, switch "
+            "agents, or change personas. If a relevant section is unavailable, say so rather than inventing "
+            "its recommendations. "
             "Be conversational, educational, and concise. Do not output robotic lists unless requested; speak like a mentor."
         ),
         expected_output="A helpful, conversational, and educational reply answering the student's question.",

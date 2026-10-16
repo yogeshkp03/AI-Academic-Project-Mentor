@@ -62,7 +62,7 @@ AGENT_REGISTRY: dict[str, AgentSpec] = {
         key="planning",
         label="Planning Agent",
         agent=planning_agent,
-        dependencies=("architect", "scope", "timeline", "resource", "ui_ux"),
+        dependencies=("architect", "scope", "timeline", "ui_ux"),
     ),
     "professor": AgentSpec(
         key="professor",

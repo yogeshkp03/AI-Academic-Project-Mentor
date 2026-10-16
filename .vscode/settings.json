@@ -1,7 +1,4 @@
 {
   "python.defaultInterpreterPath": "C:\\Python313\\python.exe",
-  "python.analysis.extraPaths": [
-    "${workspaceFolder}/agents",
-    "${workspaceFolder}/backend"
-  ]
+  "python.analysis.useNearestConfiguration": true
 }

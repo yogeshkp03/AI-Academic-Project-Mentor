@@ -1,5 +1,6 @@
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { POLLING } from '../config';
+import { ApiError } from '../lib/apiClient';
 import { runsApi } from '../lib/api/runs';
 import { projectsApi } from '../lib/api/projects';
 import { useAsync } from './useAsync';
@@ -10,6 +11,7 @@ export function useAllRuns(studentId) {
     loading,
     error,
     run: refetch,
+    setData,
     setError,
   } = useAsync(
     async () => {
@@ -19,14 +21,52 @@ export function useAllRuns(studentId) {
       const settled = await Promise.allSettled(
         projects.map((project) => runsApi.listForProject(project.id)),
       );
-      return settled.flatMap((entry) => (entry.status === 'fulfilled' ? entry.value : []));
+      return {
+        runs: settled.flatMap((entry) => (entry.status === 'fulfilled' ? entry.value : [])),
+        failedProjectIds: settled.flatMap((entry, index) =>
+          entry.status === 'rejected' ? [projects[index].id] : [],
+        ),
+      };
     },
     { auto: Boolean(studentId), deps: [studentId] },
   );
 
-  const runs = data ?? [];
+  const runs = useMemo(() => data?.runs ?? [], [data?.runs]);
+  const failedProjectIds = data?.failedProjectIds ?? [];
+  const setRuns = useCallback((value) => {
+    setData((previous) => {
+      const current = previous?.runs ?? [];
+      const nextRuns = typeof value === 'function' ? value(current) : value;
+      return {
+        runs: nextRuns,
+        failedProjectIds: previous?.failedProjectIds ?? [],
+      };
+    });
+  }, [setData]);
 
-  return { runs, loading, error, refetch, setError };
+  useEffect(() => {
+    if (!runs.some((run) => run.status === 'queued' || run.status === 'running')) {
+      return undefined;
+    }
+    let cancelled = false;
+    let timer;
+    const refresh = async () => {
+      try {
+        await refetch();
+      } catch {
+        // The hook exposes the error; the timer keeps trying while the run is active.
+      } finally {
+        if (!cancelled) timer = setTimeout(refresh, 5000);
+      }
+    };
+    timer = setTimeout(refresh, 5000);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [runs, refetch]);
+
+  return { runs, failedProjectIds, loading, error, refetch, setError, setRuns };
 }
 
 const POLL_ABORTED = 'poll-aborted';
@@ -69,27 +109,43 @@ export function useAgentRuns(projectId) {
     };
   }, [projectId]);
 
-  const startAnalysis = async (targetProjectId = projectId) => {
+  const startAnalysis = useCallback(async (targetProjectId = projectId) => {
     const run = await runsApi.startAnalysis(targetProjectId);
     setData((previous) => [run, ...(previous || [])]);
     return run;
-  };
+  }, [projectId, setData]);
 
-  const pollUntilDone = async (runId, { targetProjectId = projectId, intervalMs, maxAttempts, onUpdate } = {}) => {
-    const stepMs = intervalMs ?? POLLING.intervalMs;
-    const attempts = maxAttempts ?? POLLING.maxAttempts;
+  const startConversationAnalysis = useCallback(async (conversationId) => {
+    const run = await runsApi.startFromConversation(conversationId);
+    setData((previous) => [run, ...(previous || [])]);
+    return run;
+  }, [setData]);
+
+  const pollUntilDone = useCallback(async (
+    runId,
+    { targetProjectId = projectId, intervalMs, maxAttempts, onUpdate } = {},
+  ) => {
+    let delayMs = intervalMs ?? POLLING.intervalMs;
+    let attempt = 0;
 
     contextRef.current = { projectId: targetProjectId };
 
-    for (let attempt = 0; attempt < attempts; attempt += 1) {
+    while (maxAttempts === undefined || attempt < maxAttempts) {
       if (!contextRef.current || contextRef.current.projectId !== targetProjectId) {
-        // Another poll took over the shared context slot, or the page unmounted.
         throw new PollAbortedError();
       }
 
-      const list = await runsApi.listForProject(targetProjectId);
+      let list;
+      try {
+        list = await runsApi.listForProject(targetProjectId);
+      } catch (error) {
+        if (error instanceof ApiError && error.status < 500) throw error;
+        delayMs = Math.min(delayMs * 2, 10000);
+        attempt += 1;
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+        continue;
+      }
       setData(list);
-
       const current = list.find((item) => item.id === runId);
       if (current?.status === 'failed') {
         throw new Error(current.error_message || 'Analysis failed.');
@@ -98,10 +154,23 @@ export function useAgentRuns(projectId) {
         onUpdate?.(current);
         return current;
       }
-      await new Promise((resolve) => setTimeout(resolve, stepMs));
-    }
-    throw new Error('Analysis is taking longer than expected. Check the AI Workspace to continue.');
-  };
 
-  return { runs, loading, error, refetch, setRuns: setData, setError, startAnalysis, pollUntilDone };
+      attempt += 1;
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+      delayMs = Math.min(delayMs * 1.25, 10000);
+    }
+    throw new Error('Stopped monitoring this analysis. The backend run may still be active.');
+  }, [projectId, setData]);
+
+  return {
+    runs,
+    loading,
+    error,
+    refetch,
+    setRuns: setData,
+    setError,
+    startAnalysis,
+    startConversationAnalysis,
+    pollUntilDone,
+  };
 }

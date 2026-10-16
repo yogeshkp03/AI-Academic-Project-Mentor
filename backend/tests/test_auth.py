@@ -79,7 +79,7 @@ def test_wrong_password_is_rejected(client: Any):
 
 def test_me_requires_token(client: Any):
     response = client.get("/students/me")
-    assert response.status_code in (401, 403), response.text
+    assert response.status_code == 401, response.text
 
 
 def test_invalid_token_is_rejected(client: Any):
@@ -87,7 +87,7 @@ def test_invalid_token_is_rejected(client: Any):
         "/students/me",
         headers={"Authorization": "Bearer not-a-real-token"},
     )
-    assert response.status_code in (401, 403), response.text
+    assert response.status_code == 401, response.text
 
 
 def test_profile_can_be_updated(client: Any):
@@ -119,3 +119,41 @@ def test_profile_can_be_updated(client: Any):
     assert updated.json()["department"] == "IT"
     assert updated.json()["semester"] == 6
     assert updated.json()["id"] == student_id
+
+
+def test_profile_skills_are_persisted_and_validated(client: Any):
+    email = _unique_email("skills")
+    client.post(
+        "/students/register",
+        json={
+            "name": "Skill Tester",
+            "email": email,
+            "password": "secret123",
+            "department": "CS",
+            "semester": 5,
+        },
+    )
+    login = client.post(
+        "/students/login",
+        json={"email": email, "password": "secret123"},
+    )
+    headers = {"Authorization": f"Bearer {login.json()['token']}"}
+    skills = [
+        {"name": "Python", "level": "Intermediate"},
+        {"name": "React", "level": "Beginner"},
+    ]
+
+    updated = client.patch("/students/me", headers=headers, json={"skills": skills})
+    assert updated.status_code == 200, updated.text
+    assert updated.json()["skills"] == skills
+
+    reloaded = client.get("/students/me", headers=headers)
+    assert reloaded.status_code == 200
+    assert reloaded.json()["skills"] == skills
+
+    duplicate = client.patch(
+        "/students/me",
+        headers=headers,
+        json={"skills": [{"name": "Python", "level": "Beginner"}, {"name": "python", "level": "Advanced"}]},
+    )
+    assert duplicate.status_code == 422

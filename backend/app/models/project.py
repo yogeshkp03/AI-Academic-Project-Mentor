@@ -4,6 +4,9 @@ from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.database import Base, utcnow
+from app.models.project_checkin import ProjectCheckIn
+from app.models.project_milestone import ProjectMilestone
+from app.models.project_plan_proposal import ProjectPlanProposal
 
 
 class Project(Base):
@@ -29,3 +32,31 @@ class Project(Base):
     )
 
     student = relationship("Student", back_populates="projects")
+    milestones = relationship(
+        "ProjectMilestone",
+        back_populates="project",
+        cascade="all, delete-orphan",
+        order_by=lambda: ProjectMilestone.position,
+    )
+    faculty_evaluation = relationship(
+        "FacultyEvaluation",
+        back_populates="project",
+        cascade="all, delete-orphan",
+        uselist=False,
+    )
+    risks = relationship(
+        "ProjectRisk",
+        back_populates="project",
+        cascade="all, delete-orphan",
+    )
+    check_ins = relationship(
+        "ProjectCheckIn",
+        back_populates="project",
+        cascade="all, delete-orphan",
+        order_by=lambda: ProjectCheckIn.created_at.desc(),
+    )
+    plan_proposals = relationship(
+        ProjectPlanProposal,
+        back_populates="project",
+        cascade="all, delete-orphan",
+    )

@@ -1,4 +1,4 @@
-export const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
+export const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8002';
 
 export const AGENTS = [
   { key: 'mentor', label: 'AI Mentor' },
@@ -6,10 +6,10 @@ export const AGENTS = [
   { key: 'architect', label: 'Architect Agent' },
   { key: 'scope', label: 'Scope Agent' },
   { key: 'timeline', label: 'Timeline Agent' },
-  { key: 'planning', label: 'Planning Agent' },
-  { key: 'resource', label: 'Resource Agent' },
   { key: 'ui_ux', label: 'UI/UX Agent' },
+  { key: 'planning', label: 'Planning Agent' },
   { key: 'professor', label: 'Professor QA Agent' },
+  { key: 'resource', label: 'Resource Agent' },
 ];
 
 export const RUN_STATUSES = {
